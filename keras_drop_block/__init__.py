@@ -1,1 +1,1 @@
-from .drop_block import DropBlock2D
+from .drop_block import DropBlock1D, DropBlock2D

@@ -4,46 +4,46 @@ import tempfile
 import unittest
 import keras
 import numpy as np
-from keras_drop_block import DropBlock2D
+from keras_drop_block import DropBlock1D
 
 
-class TestDropBlock2D(unittest.TestCase):
+class TestDropBlock1D(unittest.TestCase):
 
     def test_training(self):
-        input_layer = keras.layers.Input(shape=(10, 10, 3))
-        drop_block_layer = DropBlock2D(block_size=3, keep_prob=0.7)(input_layer)
+        input_layer = keras.layers.Input(shape=(100, 3))
+        drop_block_layer = DropBlock1D(block_size=3, keep_prob=0.7)(input_layer)
         model = keras.models.Model(inputs=input_layer, outputs=drop_block_layer)
         model.compile(optimizer='adam', loss='mse', metrics={})
         model_path = os.path.join(tempfile.gettempdir(), 'keras_drop_block_%f.h5' % random.random())
         model.save(model_path)
         model = keras.models.load_model(
             model_path,
-            custom_objects={'DropBlock2D': DropBlock2D},
+            custom_objects={'DropBlock1D': DropBlock1D},
         )
         model.summary()
-        inputs = np.ones((1, 10, 10, 3))
+        inputs = np.ones((1, 100, 3))
         outputs = model.predict(inputs)
         self.assertTrue(np.allclose(inputs, outputs))
 
-        input_layer = keras.layers.Input(shape=(3, 10, 10))
-        drop_block_layer = DropBlock2D(block_size=3, keep_prob=0.7, data_format='channels_first')(input_layer)
+        input_layer = keras.layers.Input(shape=(3, 100))
+        drop_block_layer = DropBlock1D(block_size=3, keep_prob=0.7, data_format='channels_first')(input_layer)
         model = keras.models.Model(inputs=input_layer, outputs=drop_block_layer)
         model.compile(optimizer='adam', loss='mse', metrics={})
         model_path = os.path.join(tempfile.gettempdir(), 'keras_drop_block_%f.h5' % random.random())
         model.save(model_path)
         model = keras.models.load_model(
             model_path,
-            custom_objects={'DropBlock2D': DropBlock2D},
+            custom_objects={'DropBlock1D': DropBlock1D},
         )
         model.summary()
-        inputs = np.ones((1, 3, 10, 10))
+        inputs = np.ones((1, 3, 100))
         outputs = model.predict(inputs)
         self.assertTrue(np.allclose(inputs, outputs))
 
     def test_mask_shape(self):
-        input_layer = keras.layers.Input(shape=(10, 10, 3))
+        input_layer = keras.layers.Input(shape=(100, 3))
         drop_block_layer = keras.layers.Lambda(
-            lambda x: DropBlock2D(block_size=3, keep_prob=0.7)(x, training=True),
+            lambda x: DropBlock1D(block_size=3, keep_prob=0.7)(x, training=True),
         )(input_layer)
         model = keras.models.Model(inputs=input_layer, outputs=drop_block_layer)
         model.compile(optimizer='adam', loss='mse', metrics={})
@@ -51,21 +51,21 @@ class TestDropBlock2D(unittest.TestCase):
         model.save(model_path)
         model = keras.models.load_model(
             model_path,
-            custom_objects={'DropBlock2D': DropBlock2D},
+            custom_objects={'DropBlock1D': DropBlock1D},
         )
         model.summary()
-        inputs = np.ones((1, 10, 10, 3))
+        inputs = np.ones((1, 100, 3))
         outputs = model.predict(inputs)
         for i in range(3):
-            print((outputs[0, :, :, i] > 0.0).astype(dtype='int32'))
-        inputs = np.ones((1000, 10, 10, 3))
+            print((outputs[0, :, i] > 0.0).astype(dtype='int32'))
+        inputs = np.ones((1000, 100, 3))
         outputs = model.predict(inputs)
         keep_prob = 1.0 * np.sum(outputs > 0.0) / np.prod(np.shape(outputs))
         self.assertTrue(0.6 < keep_prob < 0.8, keep_prob)
 
-        input_layer = keras.layers.Input(shape=(3, 10, 10))
+        input_layer = keras.layers.Input(shape=(3, 100))
         drop_block_layer = keras.layers.Lambda(
-            lambda x: DropBlock2D(block_size=3, keep_prob=0.7, data_format='channels_first')(x, training=True),
+            lambda x: DropBlock1D(block_size=3, keep_prob=0.7, data_format='channels_first')(x, training=True),
         )(input_layer)
         model = keras.models.Model(inputs=input_layer, outputs=drop_block_layer)
         model.compile(optimizer='adam', loss='mse', metrics={})
@@ -73,22 +73,22 @@ class TestDropBlock2D(unittest.TestCase):
         model.save(model_path)
         model = keras.models.load_model(
             model_path,
-            custom_objects={'DropBlock2D': DropBlock2D},
+            custom_objects={'DropBlock1D': DropBlock1D},
         )
         model.summary()
-        inputs = np.ones((1, 3, 10, 10))
+        inputs = np.ones((1, 3, 100))
         outputs = model.predict(inputs)
         for i in range(3):
-            print((outputs[0, i, :, :] > 0.0).astype(dtype='int32'))
-        inputs = np.ones((1000, 3, 10, 10))
+            print((outputs[0, i, :] > 0.0).astype(dtype='int32'))
+        inputs = np.ones((1000, 3, 100))
         outputs = model.predict(inputs)
         keep_prob = 1.0 * np.sum(outputs > 0.0) / np.prod(np.shape(outputs))
         self.assertTrue(0.6 < keep_prob < 0.8, keep_prob)
 
     def test_sync_channels(self):
-        input_layer = keras.layers.Input(shape=(10, 10, 3))
+        input_layer = keras.layers.Input(shape=(100, 3))
         drop_block_layer = keras.layers.Lambda(
-            lambda x: DropBlock2D(block_size=3, keep_prob=0.7, sync_channels=True)(x, training=True),
+            lambda x: DropBlock1D(block_size=3, keep_prob=0.7, sync_channels=True)(x, training=True),
         )(input_layer)
         model = keras.models.Model(inputs=input_layer, outputs=drop_block_layer)
         model.compile(optimizer='adam', loss='mse', metrics={})
@@ -96,14 +96,14 @@ class TestDropBlock2D(unittest.TestCase):
         model.save(model_path)
         model = keras.models.load_model(
             model_path,
-            custom_objects={'DropBlock2D': DropBlock2D},
+            custom_objects={'DropBlock1D': DropBlock1D},
         )
         model.summary()
-        inputs = np.ones((1, 10, 10, 3))
+        inputs = np.ones((1, 100, 3))
         outputs = model.predict(inputs)
         for i in range(1, 3):
-            self.assertTrue(np.allclose(outputs[0, :, :, 0], outputs[0, :, :, i]))
-        inputs = np.ones((1000, 10, 10, 3))
+            self.assertTrue(np.allclose(outputs[0, :, 0], outputs[0, :, i]))
+        inputs = np.ones((1000, 100, 3))
         outputs = model.predict(inputs)
         keep_prob = 1.0 * np.sum(outputs > 0.0) / np.prod(np.shape(outputs))
         self.assertTrue(0.6 < keep_prob < 0.8, keep_prob)

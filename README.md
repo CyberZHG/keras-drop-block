@@ -13,6 +13,4 @@ pip install keras-drop-block
 
 ## Usage
 
-```python
-
-```
+See [fashion mnist demo](./demo/mnist.py).
