@@ -61,7 +61,8 @@ class TestDropBlock2D(unittest.TestCase):
         inputs = np.ones((1000, 10, 10, 3))
         outputs = model.predict(inputs)
         keep_prob = 1.0 * np.sum(outputs > 0.0) / np.prod(np.shape(outputs))
-        self.assertTrue(0.6 < keep_prob < 0.8, keep_prob)
+        print(keep_prob)
+        self.assertTrue(0.65 < keep_prob < 0.8, keep_prob)
 
         input_layer = keras.layers.Input(shape=(3, 10, 10))
         drop_block_layer = keras.layers.Lambda(
@@ -83,7 +84,8 @@ class TestDropBlock2D(unittest.TestCase):
         inputs = np.ones((1000, 3, 10, 10))
         outputs = model.predict(inputs)
         keep_prob = 1.0 * np.sum(outputs > 0.0) / np.prod(np.shape(outputs))
-        self.assertTrue(0.6 < keep_prob < 0.8, keep_prob)
+        print(keep_prob)
+        self.assertTrue(0.65 < keep_prob < 0.8, keep_prob)
 
     def test_sync_channels(self):
         input_layer = keras.layers.Input(shape=(10, 10, 3))
@@ -106,4 +108,5 @@ class TestDropBlock2D(unittest.TestCase):
         inputs = np.ones((1000, 10, 10, 3))
         outputs = model.predict(inputs)
         keep_prob = 1.0 * np.sum(outputs > 0.0) / np.prod(np.shape(outputs))
-        self.assertTrue(0.6 < keep_prob < 0.8, keep_prob)
+        print(keep_prob)
+        self.assertTrue(0.65 < keep_prob < 0.8, keep_prob)

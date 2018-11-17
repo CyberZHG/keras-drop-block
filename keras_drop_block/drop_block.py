@@ -47,8 +47,29 @@ class DropBlock1D(keras.layers.Layer):
         block_size = K.constant(self.block_size, dtype=K.floatx())
         return ((1.0 - self.keep_prob) / block_size) * (feature_dim / (feature_dim - block_size + 1.0))
 
+    def _compute_valid_seed_region(self, seq_length):
+        positions = K.arange(seq_length)
+        half_block_size = self.block_size // 2
+        valid_seed_region = K.switch(
+            K.all(
+                K.stack(
+                    [
+                        positions >= half_block_size,
+                        positions < seq_length - half_block_size,
+                    ],
+                    axis=-1,
+                ),
+                axis=-1,
+            ),
+            K.ones((seq_length,)),
+            K.zeros((seq_length,)),
+        )
+        return K.expand_dims(K.expand_dims(valid_seed_region, axis=0), axis=-1)
+
     def _compute_drop_mask(self, shape):
-        mask = K.random_binomial(shape, p=self._get_gamma(shape[1]))
+        seq_length = shape[1]
+        mask = K.random_binomial(shape, p=self._get_gamma(seq_length))
+        mask *= self._compute_valid_seed_region(seq_length)
         mask = keras.layers.MaxPool1D(
             pool_size=self.block_size,
             padding='same',
@@ -123,8 +144,34 @@ class DropBlock2D(keras.layers.Layer):
         return ((1.0 - self.keep_prob) / (block_size ** 2)) *\
                (height * width / ((height - block_size + 1.0) * (width - block_size + 1.0)))
 
+    def _compute_valid_seed_region(self, height, width):
+        positions = K.concatenate([
+            K.expand_dims(K.tile(K.expand_dims(K.arange(height), axis=1), [1, width]), axis=-1),
+            K.expand_dims(K.tile(K.expand_dims(K.arange(width), axis=0), [height, 1]), axis=-1),
+        ], axis=-1)
+        half_block_size = self.block_size // 2
+        valid_seed_region = K.switch(
+            K.all(
+                K.stack(
+                    [
+                        positions[:, :, 0] >= half_block_size,
+                        positions[:, :, 1] >= half_block_size,
+                        positions[:, :, 0] < height - half_block_size,
+                        positions[:, :, 1] < width - half_block_size,
+                    ],
+                    axis=-1,
+                ),
+                axis=-1,
+            ),
+            K.ones((height, width)),
+            K.zeros((height, width)),
+        )
+        return K.expand_dims(K.expand_dims(valid_seed_region, axis=0), axis=-1)
+
     def _compute_drop_mask(self, shape):
-        mask = K.random_binomial(shape, p=self._get_gamma(shape[1], shape[2]))
+        height, width = shape[1], shape[2]
+        mask = K.random_binomial(shape, p=self._get_gamma(height, width))
+        mask *= self._compute_valid_seed_region(height, width)
         mask = keras.layers.MaxPool2D(
             pool_size=(self.block_size, self.block_size),
             padding='same',
