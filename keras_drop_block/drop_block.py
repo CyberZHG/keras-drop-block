@@ -1,5 +1,5 @@
-import keras
-import keras.backend as K
+from .backend import keras
+from .backend import backend as K
 
 
 class DropBlock1D(keras.layers.Layer):
@@ -23,9 +23,18 @@ class DropBlock1D(keras.layers.Layer):
         self.block_size = block_size
         self.keep_prob = keep_prob
         self.sync_channels = sync_channels
-        self.data_format = K.normalize_data_format(data_format)
-        self.input_spec = keras.engine.base_layer.InputSpec(ndim=3)
+        self.data_format = data_format
         self.supports_masking = True
+        self.seq_len = self.ones = self.zeros = None
+
+    def build(self, input_shape):
+        if self.data_format == 'channels_first':
+            self.seq_len = input_shape[-1]
+        else:
+            self.seq_len = input_shape[1]
+        self.ones = K.ones(self.seq_len, name='ones')
+        self.zeros = K.zeros(self.seq_len, name='zeros')
+        super().build(input_shape)
 
     def get_config(self):
         config = {'block_size': self.block_size,
@@ -41,35 +50,34 @@ class DropBlock1D(keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
-    def _get_gamma(self, feature_dim):
+    def _get_gamma(self):
         """Get the number of activation units to drop"""
-        feature_dim = K.cast(feature_dim, K.floatx())
+        feature_dim = K.cast(self.seq_len, K.floatx())
         block_size = K.constant(self.block_size, dtype=K.floatx())
         return ((1.0 - self.keep_prob) / block_size) * (feature_dim / (feature_dim - block_size + 1.0))
 
-    def _compute_valid_seed_region(self, seq_length):
-        positions = K.arange(seq_length)
+    def _compute_valid_seed_region(self):
+        positions = K.arange(self.seq_len)
         half_block_size = self.block_size // 2
         valid_seed_region = K.switch(
             K.all(
                 K.stack(
                     [
                         positions >= half_block_size,
-                        positions < seq_length - half_block_size,
+                        positions < self.seq_len - half_block_size,
                     ],
                     axis=-1,
                 ),
                 axis=-1,
             ),
-            K.ones((seq_length,)),
-            K.zeros((seq_length,)),
+            self.ones,
+            self.zeros,
         )
         return K.expand_dims(K.expand_dims(valid_seed_region, axis=0), axis=-1)
 
     def _compute_drop_mask(self, shape):
-        seq_length = shape[1]
-        mask = K.random_binomial(shape, p=self._get_gamma(seq_length))
-        mask *= self._compute_valid_seed_region(seq_length)
+        mask = K.random_binomial(shape, p=self._get_gamma())
+        mask *= self._compute_valid_seed_region()
         mask = keras.layers.MaxPool1D(
             pool_size=self.block_size,
             padding='same',
@@ -119,9 +127,18 @@ class DropBlock2D(keras.layers.Layer):
         self.block_size = block_size
         self.keep_prob = keep_prob
         self.sync_channels = sync_channels
-        self.data_format = K.normalize_data_format(data_format)
-        self.input_spec = keras.engine.base_layer.InputSpec(ndim=4)
+        self.data_format = data_format
         self.supports_masking = True
+        self.height = self.width = self.ones = self.zeros = None
+
+    def build(self, input_shape):
+        if self.data_format == 'channels_first':
+            self.height, self.width = input_shape[2], input_shape[3]
+        else:
+            self.height, self.width = input_shape[1], input_shape[2]
+        self.ones = K.ones((self.height, self.width), name='ones')
+        self.zeros = K.zeros((self.height, self.width), name='zeros')
+        super().build(input_shape)
 
     def get_config(self):
         config = {'block_size': self.block_size,
@@ -137,17 +154,17 @@ class DropBlock2D(keras.layers.Layer):
     def compute_output_shape(self, input_shape):
         return input_shape
 
-    def _get_gamma(self, height, width):
+    def _get_gamma(self):
         """Get the number of activation units to drop"""
-        height, width = K.cast(height, K.floatx()), K.cast(width, K.floatx())
+        height, width = K.cast(self.height, K.floatx()), K.cast(self.width, K.floatx())
         block_size = K.constant(self.block_size, dtype=K.floatx())
         return ((1.0 - self.keep_prob) / (block_size ** 2)) *\
                (height * width / ((height - block_size + 1.0) * (width - block_size + 1.0)))
 
-    def _compute_valid_seed_region(self, height, width):
+    def _compute_valid_seed_region(self):
         positions = K.concatenate([
-            K.expand_dims(K.tile(K.expand_dims(K.arange(height), axis=1), [1, width]), axis=-1),
-            K.expand_dims(K.tile(K.expand_dims(K.arange(width), axis=0), [height, 1]), axis=-1),
+            K.expand_dims(K.tile(K.expand_dims(K.arange(self.height), axis=1), [1, self.width]), axis=-1),
+            K.expand_dims(K.tile(K.expand_dims(K.arange(self.width), axis=0), [self.height, 1]), axis=-1),
         ], axis=-1)
         half_block_size = self.block_size // 2
         valid_seed_region = K.switch(
@@ -156,22 +173,21 @@ class DropBlock2D(keras.layers.Layer):
                     [
                         positions[:, :, 0] >= half_block_size,
                         positions[:, :, 1] >= half_block_size,
-                        positions[:, :, 0] < height - half_block_size,
-                        positions[:, :, 1] < width - half_block_size,
+                        positions[:, :, 0] < self.height - half_block_size,
+                        positions[:, :, 1] < self.width - half_block_size,
                     ],
                     axis=-1,
                 ),
                 axis=-1,
             ),
-            K.ones((height, width)),
-            K.zeros((height, width)),
+            self.ones,
+            self.zeros,
         )
         return K.expand_dims(K.expand_dims(valid_seed_region, axis=0), axis=-1)
 
     def _compute_drop_mask(self, shape):
-        height, width = shape[1], shape[2]
-        mask = K.random_binomial(shape, p=self._get_gamma(height, width))
-        mask *= self._compute_valid_seed_region(height, width)
+        mask = K.random_binomial(shape, p=self._get_gamma())
+        mask *= self._compute_valid_seed_region()
         mask = keras.layers.MaxPool2D(
             pool_size=(self.block_size, self.block_size),
             padding='same',

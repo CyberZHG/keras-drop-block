@@ -2,8 +2,10 @@ import os
 import random
 import tempfile
 import unittest
-import keras
+
 import numpy as np
+
+from keras_drop_block.backend import keras
 from keras_drop_block import DropBlock1D
 
 
@@ -42,9 +44,7 @@ class TestDropBlock1D(unittest.TestCase):
 
     def test_mask_shape(self):
         input_layer = keras.layers.Input(shape=(100, 3))
-        drop_block_layer = keras.layers.Lambda(
-            lambda x: DropBlock1D(block_size=3, keep_prob=0.7)(x, training=True),
-        )(input_layer)
+        drop_block_layer = DropBlock1D(block_size=3, keep_prob=0.7)(input_layer, training=True)
         model = keras.models.Model(inputs=input_layer, outputs=drop_block_layer)
         model.compile(optimizer='adam', loss='mse', metrics={})
         model_path = os.path.join(tempfile.gettempdir(), 'keras_drop_block_%f.h5' % random.random())
@@ -65,9 +65,8 @@ class TestDropBlock1D(unittest.TestCase):
         self.assertTrue(0.65 < keep_prob < 0.8, keep_prob)
 
         input_layer = keras.layers.Input(shape=(3, 100))
-        drop_block_layer = keras.layers.Lambda(
-            lambda x: DropBlock1D(block_size=3, keep_prob=0.7, data_format='channels_first')(x, training=True),
-        )(input_layer)
+        drop_block_layer = DropBlock1D(block_size=3, keep_prob=0.7,
+                                       data_format='channels_first')(input_layer, training=True)
         model = keras.models.Model(inputs=input_layer, outputs=drop_block_layer)
         model.compile(optimizer='adam', loss='mse', metrics={})
         model_path = os.path.join(tempfile.gettempdir(), 'keras_drop_block_%f.h5' % random.random())
@@ -89,9 +88,7 @@ class TestDropBlock1D(unittest.TestCase):
 
     def test_sync_channels(self):
         input_layer = keras.layers.Input(shape=(100, 3))
-        drop_block_layer = keras.layers.Lambda(
-            lambda x: DropBlock1D(block_size=3, keep_prob=0.7, sync_channels=True)(x, training=True),
-        )(input_layer)
+        drop_block_layer = DropBlock1D(block_size=3, keep_prob=0.7, sync_channels=True)(input_layer, training=True)
         model = keras.models.Model(inputs=input_layer, outputs=drop_block_layer)
         model.compile(optimizer='adam', loss='mse', metrics={})
         model_path = os.path.join(tempfile.gettempdir(), 'keras_drop_block_%f.h5' % random.random())
