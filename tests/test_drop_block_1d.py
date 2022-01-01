@@ -4,8 +4,8 @@ import tempfile
 import unittest
 
 import numpy as np
+from tensorflow import keras
 
-from keras_drop_block.backend import keras
 from keras_drop_block import DropBlock1D
 
 

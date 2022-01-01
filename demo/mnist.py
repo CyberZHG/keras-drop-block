@@ -1,7 +1,7 @@
-import keras
-import keras.backend as K
 import numpy as np
-from keras.datasets import fashion_mnist
+from tensorflow import keras
+from tensorflow.keras import backend as K
+from tensorflow.keras.datasets import fashion_mnist
 from keras_drop_block import DropBlock2D
 
 
